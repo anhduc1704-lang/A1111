@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Đấu Trí AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans p-6">
+
+  <div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex justify-between items-center bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
+      <div>
+        <h1 class="text-2xl font-extrabold text-indigo-400">🎛️ Bảng Điều Khiển MC</h1>
+        <p class="text-xs text-slate-400 mt-1">Trạng thái game: <span id="game-status" class="font-bold text-amber-400">LOBBY</span></p>
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="startGame()" class="bg-emerald-600 hover:bg-emerald-500 font-bold px-4 py-2.5 rounded-xl text-sm transition">▶ Bắt đầu Game mới</button>
+        <button onclick="nextQuestion()" class="bg-indigo-600 hover:bg-indigo-500 font-bold px-4 py-2.5 rounded-xl text-sm transition">⏭ Câu hỏi tiếp theo</button>
+        <button onclick="endQuestion()" class="bg-amber-600 hover:bg-amber-500 font-bold px-4 py-2.5 rounded-xl text-sm transition">⏹ Chốt đáp án ngay</button>
+        <button onclick="resetGame()" class="bg-rose-600/80 hover:bg-rose-600 font-bold px-4 py-2.5 rounded-xl text-sm transition">🔄 Reset Toàn Bộ</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-4 gap-4">
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div class="text-xs text-slate-400">Tổng người chơi</div>
+        <div id="stat-total" class="text-3xl font-extrabold text-white mt-1">0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div class="text-xs text-emerald-400">Còn sống (ALIVE)</div>
+        <div id="stat-alive" class="text-3xl font-extrabold text-emerald-400 mt-1">0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div class="text-xs text-slate-400">Bị loại (SPECTATOR)</div>
+        <div id="stat-spectators" class="text-3xl font-extrabold text-slate-400 mt-1">0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div class="text-xs text-amber-400">Chỉ tiêu vòng này</div>
+        <div id="stat-quota" class="text-3xl font-extrabold text-amber-400 mt-1">Top 50</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-6">
+      <div class="col-span-2 bg-slate-800 p-5 rounded-2xl border border-slate-700">
+        <h3 class="text-lg font-bold mb-4 flex justify-between items-center">
+          <span>⚡ Tiến độ gửi đáp án câu hiện tại</span>
+          <span id="admin-timer" class="text-amber-400 font-mono text-xl">30s</span>
+        </h3>
+        <div class="overflow-y-auto max-h-[350px]">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-900 text-slate-400 sticky top-0">
+              <tr>
+                <th class="p-3">Người chơi</th>
+                <th class="p-3">Đáp án chọn</th>
+                <th class="p-3">Thời gian</th>
+                <th class="p-3">Kết quả</th>
+              </tr>
+            </thead>
+            <tbody id="live-table-body" class="divide-y divide-slate-700/50">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700">
+        <h3 class="text-lg font-bold mb-4">🏆 Danh sách lọt vào vòng trong</h3>
+        <div id="survivors-list" class="space-y-2 overflow-y-auto max-h-[350px] text-sm">
+          <p class="text-slate-500 text-xs text-center py-8">Chưa có dữ liệu vòng đấu...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    function startGame() { socket.emit('admin-start-game'); }
+    function nextQuestion() { socket.emit('admin-next-question'); }
+    function endQuestion() { socket.emit('admin-end-question'); }
+    function resetGame() { if(confirm('Reset toàn bộ game?')) socket.emit('admin-reset-game'); }
+
+    socket.on('game-state-update', (data) => {
+      document.getElementById('game-status').innerText = data.status;
+      document.getElementById('stat-total').innerText = data.stats.total;
+      document.getElementById('stat-alive').innerText = data.stats.alive;
+      document.getElementById('stat-spectators').innerText = data.stats.spectators;
+      document.getElementById('stat-quota').innerText = `Top ${data.quota}`;
+    });
+
+    socket.on('timer-tick', (data) => {
+      document.getElementById('admin-timer').innerText = `${data.timeRemaining}s`;
+    });
+
+    socket.on('new-question', () => {
+      document.getElementById('live-table-body').innerHTML = '';
+    });
+
+    socket.on('admin-live-answer', (data) => {
+      const tbody = document.getElementById('live-table-body');
+      const tr = document.createElement('tr');
+      const optLabels = ['A', 'B', 'C', 'D'];
+
+      tr.innerHTML = `
+        <td class="p-3 font-medium">${data.playerName}</td>
+        <td class="p-3 font-bold text-indigo-400">${optLabels[data.selectedOption]}</td>
+        <td class="p-3 font-mono text-xs">${data.responseTimeMs} ms</td>
+        <td class="p-3">${data.isCorrect ? '✅ Đúng' : '❌ Sai'}</td>
+      `;
+      tbody.prepend(tr);
+    });
+
+    socket.on('round-summary', (data) => {
+      const container = document.getElementById('survivors-list');
+      container.innerHTML = '';
+
+      if (data.survivorsList.length === 0) {
+        container.innerHTML = `<p class="text-rose-400 text-xs text-center py-4">Không có ai lọt vào vòng này!</p>`;
+        return;
+      }
+
+      data.survivorsList.forEach((s, idx) => {
+        const item = document.createElement('div');
+        item.className = 'flex justify-between items-center bg-slate-900 p-2.5 rounded-lg border border-slate-700/50';
+        item.innerHTML = `<span class="font-medium text-emerald-400">#${idx + 1} ${s.name}</span> <span class="text-xs font-mono text-slate-400">${s.time} ms</span>`;
+        container.appendChild(item);
+      });
+
+      if (data.isGameOver) {
+        alert(`GAME OVER! Quán quân là: ${data.winner || 'Chưa xác định'}`);
+      }
+    });
+  </script>
+</body>
+</html>

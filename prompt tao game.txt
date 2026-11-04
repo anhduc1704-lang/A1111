@@ -1,0 +1,11 @@
+prompt 1: Tôi muốn tổ chức một trò chơi trắc nghiệm trực tuyến loại dần theo thời gian thực cho sự kiện. Người chơi dùng điện thoại truy cập đường link để tham gia, mỗi câu hỏi có 30 giây trả lời. Sau mỗi câu, hệ thống sẽ tự động lọc lấy những người trả lời đúng và nhanh nhất vào vòng trong, loại dần qua 8 câu cho đến khi tìm được Quán quân. Bạn hãy tư vấn giúp tôi giải pháp kỹ thuật đơn giản, dễ triển khai nhất (không cần cài phần mềm phức tạp, có thể đưa lên web miễn phí) và đề xuất cấu trúc hệ thống cần thiết.
+
+prompt 2: Tôi muốn dùng một giải pháp đơn giản chạy trên Node.js kết hợp Express và Socket.IO để quản lý trạng thái game trực tiếp trong bộ nhớ RAM của server và đồng bộ thời gian thực qua WebSocket. Hãy tư vấn theo hướng này và đề xuất kiến trúc file cho tôi.
+
+prompt 3: Hãy thiết kế logic chi tiết cho game như sau: Có 8 câu hỏi trắc nghiệm chủ đề Trí tuệ nhân tạo (AI). Số lượng người tối đa được lọt vào vòng trong qua từng câu lần lượt là 50, 40, 30, 20, 10, 6, 3 và 1 người. Người chơi bị loại sẽ chuyển sang 'Chế độ theo dõi'. Hãy viết logic cho server để nhận đáp án, ghi nhận thời gian chính xác theo mili-giây và loại người chơi hợp lý.
+
+prompt 4: Bây giờ hãy phân chia dự án này thành các file cụ thể. Thư mục dự án sẽ tổ chức như thế nào? Các file mã nguồn backend (server.js), cấu hình (package.json), và các trang giao diện frontend (index.html, admin.html) nằm ở đâu? Lưu ý đặt 2 file HTML vào thư mục tên là public."
+
+prompt 5: Hãy viết hoàn chỉnh mã nguồn cho từng file trong dự án đã thống nhất ở trên: package.json, server.js, public/index.html, public/admin.html và viết thêm file README.md hướng dẫn từng bước cách upload dự án lên GitHub rồi đưa lên Render/Railway để lấy link public cho mọi người chơi.
+
+prompt 6: Hãy đóng gói toàn bộ 5 file vừa tạo cùng với cấu trúc thư mục public thành 1 file ZIP để tôi tải về máy tính và đưa lên GitHub.

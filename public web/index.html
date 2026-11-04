@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đấu Trí AI - Khán Giả</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center p-4">
+
+  <header class="w-full max-w-md flex justify-between items-center py-3 border-b border-slate-800 mb-4">
+    <h1 class="text-xl font-bold text-indigo-400">🤖 Đấu Trí AI</h1>
+    <div id="player-badge" class="hidden text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+      Đang thi đấu
+    </div>
+  </header>
+
+  <main class="w-full max-w-md flex-1 flex flex-col justify-center">
+
+    <div id="screen-join" class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 text-center">
+      <h2 class="text-2xl font-bold mb-2">Thử Thách Trí Tuệ AI</h2>
+      <p class="text-slate-400 text-sm mb-6">Nhập tên của bạn để sẵn sàng tham gia đấu trường loại trực tiếp 8 câu hỏi.</p>
+      <input type="text" id="input-name" placeholder="Nhập Biệt danh / Tên của bạn" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg focus:outline-none focus:border-indigo-500 mb-4">
+      <button onclick="joinGame()" class="w-full bg-indigo-600 hover:bg-indigo-500 font-bold py-3.5 rounded-xl transition shadow-lg shadow-indigo-600/30">VÀO GAME ngay</button>
+    </div>
+
+    <div id="screen-lobby" class="hidden bg-slate-800 p-8 rounded-2xl text-center border border-slate-700">
+      <div class="animate-bounce text-5xl mb-4">⏳</div>
+      <h3 class="text-xl font-bold mb-2">Đã Đăng Ký Thành Công!</h3>
+      <p class="text-slate-400 text-sm">Hãy nhìn lên màn hình chính. Trò chơi sẽ bắt đầu trong giây lát...</p>
+    </div>
+
+    <div id="screen-question" class="hidden flex flex-col gap-4">
+      <div class="flex justify-between items-center text-xs font-semibold text-slate-400">
+        <span id="q-index-badge" class="bg-slate-800 px-3 py-1 rounded-lg">Câu 1/8</span>
+        <span id="q-quota-badge" class="bg-amber-500/20 text-amber-400 px-3 py-1 rounded-lg border border-amber-500/30">Lấy Top 50</span>
+      </div>
+
+      <div class="bg-slate-800 p-4 rounded-xl text-center border border-slate-700 relative overflow-hidden">
+        <div id="timer-text" class="text-4xl font-extrabold text-amber-400">30s</div>
+        <div id="timer-bar" class="absolute bottom-0 left-0 h-1.5 bg-amber-400 w-full transition-all duration-1000"></div>
+      </div>
+
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 min-h-[100px] flex items-center justify-center text-center font-medium text-lg" id="q-text">
+        Đang tải câu hỏi...
+      </div>
+
+      <div class="grid grid-cols-1 gap-3" id="options-container">
+      </div>
+
+      <div id="spectator-warning" class="hidden bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-xl text-center text-xs font-medium">
+        👀 Bạn đang ở Chế độ theo dõi. Các nút bấm đã bị vô hiệu hóa.
+      </div>
+    </div>
+
+    <div id="screen-result" class="hidden bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center">
+      <div id="result-icon" class="text-6xl mb-3">🎉</div>
+      <h3 id="result-title" class="text-2xl font-bold mb-2">Chúc Mừng!</h3>
+      <p id="result-desc" class="text-slate-300 text-sm mb-4">Bạn đã lọt vào vòng tiếp theo.</p>
+      <div class="text-xs text-slate-400 bg-slate-900 p-3 rounded-xl border border-slate-800">
+        Đang chờ Quản trò chuyển sang câu hỏi tiếp theo...
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const socket = io();
+    let myStatus = 'ALIVE';
+    let selectedAnswer = null;
+
+    function joinGame() {
+      const name = document.getElementById('input-name').value.trim();
+      if (!name) return alert('Vui lòng nhập tên!');
+      socket.emit('player-join', { name });
+    }
+
+    socket.on('join-success', (data) => {
+      myStatus = data.status;
+      document.getElementById('screen-join').classList.add('hidden');
+      document.getElementById('screen-lobby').classList.remove('hidden');
+      document.getElementById('player-badge').classList.remove('hidden');
+      updateBadge();
+    });
+
+    function updateBadge() {
+      const badge = document.getElementById('player-badge');
+      if (myStatus === 'ALIVE') {
+        badge.className = 'text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        badge.innerText = 'Đang thi đấu';
+      } else {
+        badge.className = 'text-xs px-2.5 py-1 rounded-full font-semibold bg-slate-700 text-slate-400 border border-slate-600';
+        badge.innerText = 'Đã bị loại (Khán giả)';
+      }
+    }
+
+    socket.on('new-question', (data) => {
+      selectedAnswer = null;
+      document.getElementById('screen-lobby').classList.add('hidden');
+      document.getElementById('screen-result').classList.add('hidden');
+      document.getElementById('screen-question').classList.remove('hidden');
+
+      document.getElementById('q-index-badge').innerText = `Câu ${data.questionIndex + 1}/${data.totalQuestions}`;
+      document.getElementById('q-quota-badge').innerText = `Chỉ tiêu: Top ${data.quota}`;
+      document.getElementById('q-text').innerText = data.question;
+
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+
+      const labels = ['A', 'B', 'C', 'D'];
+      data.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl text-left flex items-center gap-3 transition ${myStatus !== 'ALIVE' ? 'opacity-50 cursor-not-allowed' : ''}`;
+        btn.onclick = () => chooseAnswer(idx, btn);
+        btn.disabled = myStatus !== 'ALIVE';
+        btn.innerHTML = `<span class="w-8 h-8 rounded-lg bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 font-bold flex items-center justify-center shrink-0">${labels[idx]}</span> <span class="font-medium text-slate-200 text-sm">${opt}</span>`;
+        container.appendChild(btn);
+      });
+
+      if (myStatus !== 'ALIVE') {
+        document.getElementById('spectator-warning').classList.remove('hidden');
+      } else {
+        document.getElementById('spectator-warning').classList.add('hidden');
+      }
+    });
+
+    function chooseAnswer(idx, btnElement) {
+      if (selectedAnswer !== null || myStatus !== 'ALIVE') return;
+      selectedAnswer = idx;
+
+      const btns = document.querySelectorAll('#options-container button');
+      btns.forEach(b => b.classList.remove('border-indigo-500', 'bg-indigo-600/20'));
+      btnElement.classList.add('border-indigo-500', 'bg-indigo-600/20');
+
+      socket.emit('submit-answer', { selectedOption: idx });
+    }
+
+    socket.on('timer-tick', (data) => {
+      document.getElementById('timer-text').innerText = `${data.timeRemaining}s`;
+      const pct = (data.timeRemaining / 30) * 100;
+      document.getElementById('timer-bar').style.width = `${pct}%`;
+    });
+
+    socket.on('round-result-personal', (data) => {
+      myStatus = data.status;
+      updateBadge();
+
+      document.getElementById('screen-question').classList.add('hidden');
+      document.getElementById('screen-result').classList.remove('hidden');
+
+      const title = document.getElementById('result-title');
+      const desc = document.getElementById('result-desc');
+      const icon = document.getElementById('result-icon');
+
+      if (data.status === 'ALIVE') {
+        icon.innerText = '🎉';
+        title.innerText = 'Xuất Sắc!';
+        title.className = 'text-2xl font-bold mb-2 text-emerald-400';
+        desc.innerText = `Bạn trả lời đúng và thuộc nhóm nhanh nhất! (${data.responseTimeMs} ms)`;
+      } else {
+        icon.innerText = '💀';
+        title.innerText = 'Rất Tiếc!';
+        title.className = 'text-2xl font-bold mb-2 text-rose-400';
+        desc.innerText = data.isCorrect ? 'Bạn trả lời đúng nhưng bị rơi khỏi Top tốc độ.' : 'Bạn đã chọn sai đáp án hoặc không kịp bấm chọn.';
+      }
+    });
+
+    socket.on('game-reset', () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>
